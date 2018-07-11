@@ -1,21 +1,15 @@
 import React from 'react';
-import TicketList from './TicketList';
 import Header from './Header';
-import { Switch, Route } from 'react-router-dom';
+import TicketList from './TicketList';
 import NewTicketControl from './NewTicketControl';
-import Admin from './Admin';
 import Error404 from './Error404';
+import { Switch, Route, withRouter } from 'react-router-dom';
+import Moment from 'moment';
+import Admin from './Admin';
+import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
 
-class App extends React.Component{
-
-  constructor(props) {
-    super(props);
-    this.state = {
-      masterTicketList: {},
-      selectedTicket: null
-    };
-    this.handleChangingSelectedTicket = this.handleChangingSelectedTicket.bind(this);
-  }
+class App extends React.Component {
 
   componentDidMount() {
     this.waitTimeUpdateTimer = setInterval(() =>
@@ -24,30 +18,32 @@ class App extends React.Component{
     );
   }
 
-  updateTicketElapsedWaitTime() {
-    var newMasterTicketList = Object.assign({}, this.state.masterTicketList);
-    Object.keys(newMasterTicketList).forEach(ticketId => {
-      newMasterTicketList[ticketId].formattedWaitTime = (newMasterTicketList[ticketId].timeOpen).fromNow(true);
-    });
-    this.setState({masterTicketList: newMasterTicketList});
-  }
-
   componentWillUnmount(){
     clearInterval(this.waitTimeUpdateTimer);
   }
 
-  handleChangingSelectedTicket(ticketId){
-    this.setState({selectedTicket: ticketId});
-  }
+  updateTicketElapsedWaitTime() {
+  const { dispatch } = this.props;
+  Object.keys(this.props.masterTicketList).map(ticketId => {
+    const ticket = this.props.masterTicketList[ticketId];
+    const newFormattedWaitTime = ticket.timeOpen.fromNow(true);
+    const action = {
+      type: 'UPDATE_TIME',
+      id: ticketId,
+      formattedWaitTime: newFormattedWaitTime
+    };
+    dispatch(action);
+  });
+}
 
   render(){
     return (
       <div>
         <Header/>
         <Switch>
-          <Route exact path='/' render={()=><TicketList ticketList={this.state.masterTicketList} />} />
-          <Route path='/newticket' render={()=><NewTicketControl />}  />
-          <Route path='/admin' render={(props)=><Admin ticketList={this.state.masterTicketList} currentRouterPath={props.location.pathname} onTicketSelection={this.handleChangingSelectedTicket} selectedTicket={this.state.selectedTicket}/>} />
+          <Route exact path='/' render={()=><TicketList ticketList={this.props.masterTicketList} />} />
+          <Route path='/newticket' render={()=><NewTicketControl />} />
+          <Route path='/admin' render={(props)=><Admin currentRouterPath={props.location.pathname} />} />
           <Route component={Error404} />
         </Switch>
       </div>
@@ -55,4 +51,14 @@ class App extends React.Component{
   }
 }
 
-export default App;
+App.propTypes = {
+  masterTicketList: PropTypes.object
+};
+
+const mapStateToProps = state => {
+  return {
+    masterTicketList: state.masterTicketList
+  };
+};
+
+export default withRouter(connect(mapStateToProps)(App));
